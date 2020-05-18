@@ -194,12 +194,12 @@ class report_usage_table extends \flexible_table {
                 if (!isset($users[$userid])) {
                     $users[$userid] = $DB->get_record('user', array('id' => $userid), '*', MUST_EXIST);
                 }
-
-                $rowdata = [$this->is_downloading() ? $modname : $modhtml];
                 $username = fullname($users[$userid]);
                 $userlink = (new \moodle_url('/user/view.php', ['id' => $userid]))->out();
                 $userhtml = "<div style='padding:  0.5rem 0.5rem 0.5rem 1rem'><a href='$userlink'>$username</a></div>";
-                $rowdata[] = [$this->is_downloading() ? $username : $userhtml];
+
+                $rowdata = [$this->is_downloading() ? $modname : $modhtml];
+                $rowdata[] = $this->is_downloading() ? $username : $userhtml;
 
                 foreach ($a as $amount) {
                     if (!$this->is_downloading()) {
