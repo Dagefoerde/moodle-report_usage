@@ -191,7 +191,7 @@ class report_usage_table extends \flexible_table {
             foreach ($p as $userid => $a) {
                 $rowdata = [$this->is_downloading() ? $modname : $modhtml];
                 $username = 'p'.$userid;
-                $userlink = new moodle_url('/user/view.php', ['id' => $userid])->out();
+                $userlink = (new moodle_url('/user/view.php', ['id' => $userid]))->out();
                 $userhtml = "<div style='padding:  0.5rem 0.5rem 0.5rem 1rem'><a href='$userlink'>$username</a></div>";
                 $rowdata[] = [$this->is_downloading() ? $username : $userhtml];
 
