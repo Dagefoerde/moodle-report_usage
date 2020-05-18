@@ -157,7 +157,6 @@ if ($logformat !== '') {
     } else {
         $table->init_data();
     }
-}
     $table->finish_output();
     die();
 }
