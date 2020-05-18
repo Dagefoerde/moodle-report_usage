@@ -35,6 +35,7 @@ $enddate = optional_param_array('enddate', null, PARAM_INT);
 $roles = optional_param_array('roles', null, PARAM_INT);
 $sections = optional_param_array('sections', null, PARAM_INT);
 $gradecats = optional_param_array('gc', null, PARAM_INT);
+$deanonymize = (bool) optional_param('deanonymize', false, PARAM_BOOL);
 
 $params = [];
 $params['id'] = $id;
@@ -51,6 +52,14 @@ $context = context_course::instance($course->id);
 if ($logformat !== '') {
     $params['download'] = $logformat;
 }
+
+if ($deanonymize) {
+    if (!is_siteadmin()) {
+        // This is not supposed to be used by the ordinary user.
+        $deanonymize = false;
+    } else {
+        $params['deanonymize'] = 1;
+    }
 
 $start = $course->startdate;
 $end = time();
@@ -131,9 +140,9 @@ if ($gradecats != null && count($gradecats) !== 0 && count($gradecats) !== count
     }
 }
 $data = \report_usage\db_helper::get_processed_data_from_course($id, $context, $selectedroles,
-            $selectedsections, $selectedgradecats, $start, $end, $uniqueusers);
+            $selectedsections, $selectedgradecats, $start, $end, $uniqueusers, $deanonymize);
 
-$table = new \report_usage\table\report_usage_table($id, $start, $end, $data, $logformat !== '');
+$table = new \report_usage\table\report_usage_table($id, $start, $end, $data, $logformat !== '', $deanonymize);
 
 $table->define_baseurl($url);
 $table->is_downloadable(true);
@@ -142,7 +151,12 @@ $table->show_download_buttons_at(array(TABLE_P_BOTTOM));
 if ($logformat !== '') {
     $table->is_downloading($logformat, 'name');
     $table->setup();
-    $table->init_data();
+    if ($deanonymize) {
+        $table->init_data_deanonymized();
+    } else {
+        $table->init_data();
+    }
+}
     $table->finish_output();
     die();
 }
@@ -162,7 +176,11 @@ if (count($data) == 0) {
 
 ob_start();
 $table->setup();
-$table->init_data();
+if ($deanonymize) {
+    $table->init_data_deanonymized();
+} else {
+    $table->init_data();
+}
 $table->finish_html();
 $tableoutput = ob_get_clean();
 

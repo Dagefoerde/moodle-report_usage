@@ -128,16 +128,23 @@ class db_helper {
      * @throws \dml_exception
      */
     public static function get_data_from_course($courseid, $coursecontext, $roles, $sections, $gradecats,
-            $mindate, $maxdate, $uniqueusers = false) {
+            $mindate, $maxdate, $uniqueusers = false, $deanonymize = false) {
         global $DB;
 
         $params = [];
 
+        $adduserdata = '';
+        $addgroupby = '';
+        if ($deanonymize) {
+            $adduserdata = ' ul.userid, u.firstname, u.lastname,';
+            $addgroupby = ' ul.userid,';
+
+        }
         if ($uniqueusers) {
-            $sql = "SELECT MIN(ul.id) AS id, ul.contextid, yearcreated, monthcreated, daycreated, COUNT(amount) AS amount
+            $sql = "SELECT MIN(ul.id) AS id,$adduserdata ul.contextid, yearcreated, monthcreated, daycreated, COUNT(amount) AS amount
                 FROM {logstore_usage_log} ul ";
         } else {
-            $sql = "SELECT MIN(ul.id) AS id, ul.contextid, yearcreated, monthcreated, daycreated, SUM(amount) AS amount
+            $sql = "SELECT MIN(ul.id) AS id,$adduserdata ul.contextid, yearcreated, monthcreated, daycreated, SUM(amount) AS amount
                 FROM {logstore_usage_log} ul ";
 
         }
@@ -155,6 +162,9 @@ class db_helper {
                     ON ul.userid = r.userid ";
 
             $params = array_merge($params, $conparams);
+        }
+        if ($deanonymize) {
+            $sql .= 'INNER JOIN {user} u ON ul.userid = u.id ';
         }
         $sql .= "WHERE courseid = :courseid
                   AND yearcreated * 10000 + monthcreated * 100 + daycreated >= :mindate
@@ -185,7 +195,7 @@ class db_helper {
         $sql .= "AND ul.contextid $modlist ";
         $params = array_merge($params, $modparams);
 
-        $sql .= "GROUP BY ul.contextid, yearcreated, monthcreated, daycreated
+        $sql .= "GROUP BY ul.contextid,$addgroupby yearcreated, monthcreated, daycreated
                 ORDER BY ul.contextid, yearcreated, monthcreated, daycreated ";
 
         $params = array_merge($params, array(
@@ -198,7 +208,7 @@ class db_helper {
     }
 
     public static function get_processed_data_from_course($courseid, $coursecontextid, $roles, $sections,
-            $gradecats, $mindatestamp, $maxdatestamp, $uniqueusers = false) {
+            $gradecats, $mindatestamp, $maxdatestamp, $uniqueusers = false, $deanonymize = false) {
         $startdate = new \DateTime("now", \core_date::get_server_timezone_object());
         $startdate->setTimestamp($mindatestamp);
 
@@ -208,7 +218,7 @@ class db_helper {
         $days = intval($startdate->diff($enddate)->format('%a'));
 
         $records = self::get_data_from_course($courseid, $coursecontextid, $roles, $sections, $gradecats,
-                $startdate->format("Ymd"), $enddate->format("Ymd"), $uniqueusers);
+                $startdate->format("Ymd"), $enddate->format("Ymd"), $uniqueusers, $deanonymize);
         $modinfo = get_fast_modinfo($courseid, -1);
 
         $data = [];
@@ -239,14 +249,30 @@ class db_helper {
 
             $diff = new \DateTime("$v->daycreated-$v->monthcreated-$v->yearcreated");
             $datediff = intval($diff->diff($startdate, true)->format("%a"));
-            $data[$v->contextid][$datediff] = $v->amount;
+            if ($deanonymize) {
+                $data[$v->contextid][$v->userid][$datediff] = $v->amount;
+            } else {
+                $data[$v->contextid][$datediff] = $v->amount;
+            }
         }
 
         // Fill empty cells with 0.
-        for ($i = 0; $i <= $days; $i++) {
-            foreach ($data as $k => $v) {
-                if (!isset($data[$k][$i])) {
-                    $data[$k][$i] = 0;
+        if ($deanonymize) {
+            for ($i = 0; $i <= $days; $i++) {
+                foreach ($data as $k => $v) {
+                    foreach ($v as $p => $value) {
+                        if (!isset($data[$k][$p][$i])) {
+                            $data[$k][$p][$i] = 0;
+                        }
+                    }
+                }
+            }
+        } else {
+            for ($i = 0; $i <= $days; $i++) {
+                foreach ($data as $k => $v) {
+                    if (!isset($data[$k][$i])) {
+                        $data[$k][$i] = 0;
+                    }
                 }
             }
         }

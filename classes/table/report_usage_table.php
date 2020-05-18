@@ -37,6 +37,7 @@ class report_usage_table extends \flexible_table {
     private $enddate;
     private $days;
     private $data;
+    private $deanonymize;
 
     /**
      * report_usage_table constructor.
@@ -47,7 +48,7 @@ class report_usage_table extends \flexible_table {
      * @param $data {array} as returned by db_helper::get_processed_data_from_course()
      * @throws \coding_exception
      */
-    public function __construct($courseid, $start, $end, $data, $downloading) {
+    public function __construct($courseid, $start, $end, $data, $downloading, $deanonymize = false) {
         parent::__construct("report_usage_" . $courseid);
 
         $this->courseid = $courseid;
@@ -78,6 +79,16 @@ class report_usage_table extends \flexible_table {
             $headers = [get_string('file', 'report_usage')];
         }
 
+        if ($deanonymize) {
+            $this->deanonymize = true;
+            $cols[] = 'person';
+            if (!$downloading)  {
+                $headers[] = "<div style='padding: .5rem'>Person</div>"; // TODO use lang string.
+            } else {
+                $headers[] = 'Person'; // TODO use lang string.
+            }
+        }
+
         for ($i = 0; $i <= $days; $i++) {
             $cols[] = $dt->format('Y-m-d');
             $name = $dt->format('d.m');
@@ -99,9 +110,13 @@ class report_usage_table extends \flexible_table {
     }
 
     public function init_data() {
+        if ($this->deanonymize) {
+            throw new \coding_exception('State mismatch.');
+        }
         // Get maxima and biggest maximum.
         $biggestmax = 0;
         $maxima = [];
+        // Nested lists of the form Activity -> Date -> Count.
         foreach ($this->data as $k => $a) {
             $maxima[$k] = max($a);
             if (intval($maxima[$k]) > $biggestmax) {
@@ -153,6 +168,45 @@ class report_usage_table extends \flexible_table {
                 $this->add_data($d);
             }
         }
+    }
+
+
+    public function init_data_deanonymized() {
+        if (!$this->deanonymize) {
+            throw new \coding_exception('State mismatch.');
+        }
+        // Data is nested list of the form Activity -> Person -> Date -> Count.
+
+        $modinfo = get_fast_modinfo($this->courseid, -1);
+
+        // Create table from records.
+        foreach ($this->data as $k => $p) {
+            $context = \context::instance_by_id($k, IGNORE_MISSING);
+            $section = $modinfo->get_cm($context->instanceid)->sectionnum;
+
+            $modname = $context->get_context_name(false, true);
+            $modlink = $context->get_url();
+            $modhtml = "<div style='padding:  0.5rem 0.5rem 0.5rem 1rem'><a href='$modlink'>$modname</a></div>";
+
+            foreach ($p as $userid => $a) {
+                $rowdata = [$this->is_downloading() ? $modname : $modhtml];
+                $username = 'p'.$userid;
+                $userlink = new moodle_url('/user/view.php', ['id' => $userid])->out();
+                $userhtml = "<div style='padding:  0.5rem 0.5rem 0.5rem 1rem'><a href='$userlink'>$username</a></div>";
+                $rowdata[] = [$this->is_downloading() ? $username : $userhtml];
+
+                foreach ($a as $amount) {
+                    if (!$this->is_downloading()) {
+                        $rowdata[] = "<div style='padding: .5rem'>$amount</div>";
+                    } else {
+                        $rowdata[] = intval($amount);
+                    }
+                }
+                $this->add_data($rowdata);
+            }
+
+        }
+
     }
 
     protected function get_color_by_percentage($per) {
