@@ -172,11 +172,13 @@ class report_usage_table extends \flexible_table {
 
 
     public function init_data_deanonymized() {
+        global $DB;
         if (!$this->deanonymize) {
             throw new \coding_exception('State mismatch.');
         }
         // Data is nested list of the form Activity -> Person -> Date -> Count.
 
+        $users = [];
         $modinfo = get_fast_modinfo($this->courseid, -1);
 
         // Create table from records.
@@ -189,9 +191,13 @@ class report_usage_table extends \flexible_table {
             $modhtml = "<div style='padding:  0.5rem 0.5rem 0.5rem 1rem'><a href='$modlink'>$modname</a></div>";
 
             foreach ($p as $userid => $a) {
+                if (!isset($users[$userid])) {
+                    $users[$userid] = $DB->get_record('user', array('id' => $userid), '*', MUST_EXIST);
+                }
+
                 $rowdata = [$this->is_downloading() ? $modname : $modhtml];
-                $username = 'p'.$userid;
-                $userlink = (new moodle_url('/user/view.php', ['id' => $userid]))->out();
+                $username = fullname($users[$userid]);
+                $userlink = (new \moodle_url('/user/view.php', ['id' => $userid]))->out();
                 $userhtml = "<div style='padding:  0.5rem 0.5rem 0.5rem 1rem'><a href='$userlink'>$username</a></div>";
                 $rowdata[] = [$this->is_downloading() ? $username : $userhtml];
 
