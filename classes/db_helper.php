@@ -264,6 +264,12 @@ class db_helper {
                     }
                 }
             }
+
+            foreach ($data as &$row) {
+                foreach ($row as &$days) {
+                    ksort($days);
+                }
+            }
         } else {
             for ($i = 0; $i <= $days; $i++) {
                 foreach ($data as $k => $v) {
@@ -272,10 +278,10 @@ class db_helper {
                     }
                 }
             }
-        }
 
-        foreach ($data as &$row) {
-            ksort($row);
+            foreach ($data as &$row) {
+                ksort($row);
+            }
         }
         return $data;
     }
