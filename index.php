@@ -60,6 +60,7 @@ if ($deanonymize) {
     } else {
         $params['deanonymize'] = 1;
     }
+}
 
 $start = $course->startdate;
 $end = time();
