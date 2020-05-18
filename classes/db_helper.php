@@ -136,7 +136,7 @@ class db_helper {
         $adduserdata = '';
         $addgroupby = '';
         if ($deanonymize) {
-            $adduserdata = ' ul.userid, u.firstname, u.lastname,';
+            $adduserdata = ' ul.userid, ';
             $addgroupby = ' ul.userid,';
 
         }
