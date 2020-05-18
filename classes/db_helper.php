@@ -163,9 +163,6 @@ class db_helper {
 
             $params = array_merge($params, $conparams);
         }
-        if ($deanonymize) {
-            $sql .= 'INNER JOIN {user} u ON ul.userid = u.id ';
-        }
         $sql .= "WHERE courseid = :courseid
                   AND yearcreated * 10000 + monthcreated * 100 + daycreated >= :mindate
                   AND yearcreated * 10000 + monthcreated * 100 + daycreated <= :maxdate ";

@@ -188,7 +188,7 @@ class report_usage_table extends \flexible_table {
 
             $modname = $context->get_context_name(false, true);
             $modlink = $context->get_url();
-            $modhtml = "<div style='padding:  0.5rem 0.5rem 0.5rem 1rem'><a href='$modlink'>$modname</a></div>";
+            $modhtml = "<div span='cm-$k' style='padding:  0.5rem 0.5rem 0.5rem 1rem'><a href='$modlink'>$modname</a></div>";
 
             foreach ($p as $userid => $a) {
                 if (!isset($users[$userid])) {
